@@ -6,6 +6,8 @@ fork 并修改自 https://github.com/Minecraft-QQBot/BotServer
 
 克隆并进入项目目录下
 
+复制配置文件模板 `.env.example` 为 `.env`
+
 ### 创建共享网络
 
 当前编排使用外部共享网络 mc-bot，供其他 mc bot 相关容器共同接入

@@ -9,3 +9,4 @@ BotServer/Plugins/.vscode/settings.json
 uv.lock
 Logs/
 Data/
+.env
