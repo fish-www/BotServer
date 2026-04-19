@@ -7,3 +7,5 @@ Test.py
 BotServer/Plugins/.vscode/settings.json
 .venv/
 uv.lock
+Logs/
+Data/
