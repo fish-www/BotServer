@@ -53,3 +53,7 @@ ws://mc-botserver:8000/onebot/v11/ws
 ### mc-botserver
 
 在 webui（[http://127.0.0.1:8000/webui](http://127.0.0.1:8000/webui)）或配置文件 `.env` 中修改配置，之后重启即可应用
+
+## 与 mc 服务器交互
+
+见 [mc-fakeplayer](https://github.com/fish-www/Platform.FakePlayer)
