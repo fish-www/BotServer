@@ -1,23 +1,25 @@
 services:
-  minecraft-qqbot:
-    build: .
-    container_name: minecraft-qqbot
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./.env:/app/.env
-      - ./Plugins:/app/Plugins
-      - ./Resources:/app/Resources
-      - ./Scripts:/app/Scripts
-      - ./Logs:/app/Logs
-      - ./Data:/app/Data
-    environment:
-      - PORT=8000
-      - HOST=0.0.0.0
-    restart: unless-stopped
-    networks:
-      - minecraft-qqbot-network
+    mc-botserver:
+        image: mc-bot/botserver:latest
+        build: .
+        container_name: mc-botserver
+        restart: unless-stopped
+        networks:
+            - mcbot
+        ports:
+            - "8000:8000"
+        environment:
+            - PORT=8000
+            - HOST=0.0.0.0
+        volumes:
+            - ./.env:/app/.env
+            - ./Plugins:/app/Plugins
+            - ./Resources:/app/Resources
+            - ./Scripts:/app/Scripts
+            - ./Logs:/app/Logs
+            - ./Data:/app/Data
 
 networks:
-  minecraft-qqbot-network:
-    driver: bridge
+    mcbot:
+        name: mc-bot
+        external: true
