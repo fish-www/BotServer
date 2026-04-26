@@ -8,7 +8,9 @@ from nonebot.log import logger
 
 from .. import Globals
 from ..Config import config
+from ..I18n import i18n_manager
 from ..Managers import server_manager, data_manager
+from ..Managers.Playtime import playtime_manager
 from ..Utils import Json, check_message
 
 
@@ -56,6 +58,8 @@ async def handle_websocket_minecraft(websocket: WebSocket):
 
 async def handle_websocket_bot(websocket: WebSocket):
     if name := await verify(websocket):
+        # Bot 重连时关闭此服务器所有悬空会话，防止会话时长异常累积
+        await playtime_manager.close_server_sessions(name)
         try:
             while True:
                 response = None
@@ -119,6 +123,11 @@ async def message(name: str, group_message: str):
 async def server_startup(name: str, data: dict):
     logger.info('收到服务器开启数据！尝试连接到服务器……')
     data_manager.append_server(name)
+    # 服务器（重）启动或 Bot 重连：关闭旧悬空会话，并恢复当前在线玩家的会话
+    online: list[str] = []
+    if server := server_manager.get_server(name):
+        online = (await server.send_player_list()) or []
+    await playtime_manager.reconcile_online(name, online)
     if config.sync_message_between_servers:
         await server_manager.broadcast(name, message='服务器已开启！', except_server=name)
     if config.broadcast_server:
@@ -132,6 +141,8 @@ async def server_startup(name: str, data: dict):
 async def server_shutdown(name: str, data: dict):
     logger.info('收到服务器关闭信息！正在断开连接……')
     await server_manager.disconnect_server(name)
+    # 服务器关闭，将所有在线玩家的会话标记为离线
+    await playtime_manager.close_server_sessions(name)
     if config.sync_message_between_servers:
         await server_manager.broadcast(name, message='服务器已关闭！', except_server=name)
     if config.broadcast_server:
@@ -145,8 +156,10 @@ async def server_shutdown(name: str, data: dict):
 async def player_death(name: str, data: list):
     player, death_message = data
     logger.debug(F'收到玩家死亡 {death_message} 消息！')
-    if (not config.bot_prefix) or (not player.upper().startswith(config.bot_prefix)):
-        broadcast_message = F'玩家 {player} 死亡了，呜……'
+    base_player = i18n_manager.strip_i18n(player)
+    display_player = i18n_manager.translate_i18n(player)
+    if (not config.bot_prefix) or (not base_player.upper().startswith(config.bot_prefix)):
+        broadcast_message = F'玩家 {display_player} 死亡了，呪……'
         if config.sync_message_between_servers:
             await server_manager.broadcast(name, message=broadcast_message, except_server=name)
         if config.broadcast_player:
@@ -159,15 +172,18 @@ async def player_death(name: str, data: list):
 
 async def player_joined(name: str, player: str):
     logger.info('收到玩家加入服务器通知！')
-    server_message = F'玩家 {player} 加入了游戏。'
-    group_message = F'玩家 {player} 加入了 [{name}] 服务器，喵～'
+    base_player = i18n_manager.strip_i18n(player)
+    display_player = i18n_manager.translate_i18n(player)
+    await playtime_manager.record_join(base_player, name)
+    server_message = F'玩家 {display_player} 加入了游戏。'
+    group_message = F'玩家 {display_player} 加入了 [{name}] 服务器，喵～'
     if config.list_compatible_mode:
         if server := server_manager.get_server(name):
-            if player not in server.player_list:
-                server.player_list.append(player)
-    if config.bot_prefix and player.upper().startswith(config.bot_prefix):
-        group_message = F'机器人 {player} 加入了 [{name}] 服务器。'
-        server_message = F'机器人 {player} 加入了游戏。'
+            if base_player not in server.player_list:
+                server.player_list.append(base_player)
+    if config.bot_prefix and base_player.upper().startswith(config.bot_prefix):
+        group_message = F'机器人 {display_player} 加入了 [{name}] 服务器。'
+        server_message = F'机器人 {display_player} 加入了游戏。'
     if config.sync_message_between_servers:
         await server_manager.broadcast(source=name, message=server_message, except_server=name)
     if config.broadcast_player:
@@ -180,15 +196,18 @@ async def player_joined(name: str, player: str):
 
 async def player_left(name: str, player: str):
     logger.info('收到玩家离开服务器通知！')
-    server_message = F'玩家 {player} 离开了游戏。'
-    group_message = F'玩家 {player} 离开了 [{name}] 服务器，呜……'
+    base_player = i18n_manager.strip_i18n(player)
+    display_player = i18n_manager.translate_i18n(player)
+    await playtime_manager.record_leave(base_player, name)
+    server_message = F'玩家 {display_player} 离开了游戏。'
+    group_message = F'玩家 {display_player} 离开了 [{name}] 服务器，呜……'
     if config.list_compatible_mode:
         if server := server_manager.get_server(name):
-            if player in server.player_list:
-                server.player_list.remove(player)
-    if config.bot_prefix and player.upper().startswith(config.bot_prefix):
-        server_message = F'机器人 {player} 离开了游戏。'
-        group_message = F'机器人 {player} 离开了 [{name}] 服务器。'
+            if base_player in server.player_list:
+                server.player_list.remove(base_player)
+    if config.bot_prefix and base_player.upper().startswith(config.bot_prefix):
+        server_message = F'机器人 {display_player} 离开了游戏。'
+        group_message = F'机器人 {display_player} 离开了 [{name}] 服务器。'
     if config.sync_message_between_servers:
         await server_manager.broadcast(name, message=server_message, except_server=name)
     if config.broadcast_player:
@@ -201,16 +220,17 @@ async def player_left(name: str, player: str):
 
 async def player_chat(name: str, data: list):
     player, chat_message = data
-    logger.debug(F'收到玩家 {player} 在服务器 [{name}] 发送消息！')
+    display_player = i18n_manager.translate_i18n(player)
+    logger.debug(F'收到玩家 {display_player} 在服务器 [{name}] 发送消息！')
     if config.sync_all_game_message:
         if check_message(chat_message):
             logger.warning(F'检测到消息 {chat_message} 包含敏感词，已丢弃！')
-            await send_message(F'检测到玩家 {player} 发送的消息包含敏感词，已丢弃！详情请看控制台。')
+            await send_message(F'检测到玩家 {display_player} 发送的消息包含敏感词，已丢弃！详情请看控制台。')
             return None
-        if not (await send_message(F'[{name}] <{player}> {chat_message}')):
+        if not (await send_message(F'[{name}] <{display_player}> {chat_message}')):
             logger.warning('发送消息失败！请检查机器人状态是否正确和群号是否填写正确。')
     if config.sync_message_between_servers:
-        await server_manager.broadcast(name, player, chat_message, except_server=name)
+        await server_manager.broadcast(name, display_player, chat_message, except_server=name)
 
 
 def setup_websocket_server():

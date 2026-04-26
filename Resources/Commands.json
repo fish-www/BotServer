@@ -95,5 +95,29 @@
         }
       }
     }
+  },
+  "playtime": {
+    "usage": "playtime <*period>",
+    "description": "查询自身绑定玩家的游玩时长，需先绑定白名单。",
+    "parameters": {
+      "period": "可选，时间范围：today / week / month / year / all（默认 all），支持中文关键词。"
+    },
+    "children": {
+      "rank": {
+        "usage": "playtime rank <*period>",
+        "description": "查看游玩时长排行榜",
+        "parameters": {
+          "period": "可选，时间范围同上。"
+        }
+      },
+      "player": {
+        "usage": "playtime player <name> <*period>",
+        "description": "按玩家名查询指定玩家的游玩时长",
+        "parameters": {
+          "name": "MC 玩家名称。",
+          "period": "可选，时间范围同上。"
+        }
+      }
+    }
   }
 }

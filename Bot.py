@@ -29,7 +29,8 @@ async def startup():
     from Scripts.Servers import Websocket, Http
     from Scripts.Managers import (
         version_manager, data_manager,
-        environment_manager, lagrange_manager, resources_manager
+        environment_manager, lagrange_manager, resources_manager,
+        playtime_manager
     )
 
     resources_manager.init()
@@ -41,6 +42,7 @@ async def startup():
 
     data_manager.load()
     environment_manager.init()
+    await playtime_manager.init()
     Websocket.setup_websocket_server()
     Http.setup_api_http_server()
     Http.setup_webui_http_server()
@@ -51,9 +53,10 @@ async def startup():
 @driver.on_shutdown
 async def shutdown():
     from Scripts import Network
-    from Scripts.Managers import data_manager
+    from Scripts.Managers import data_manager, playtime_manager
 
     data_manager.save()
+    await playtime_manager.close()
 
     await Network.send_bot_status(False)
 
