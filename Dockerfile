@@ -5,7 +5,6 @@ WORKDIR /app
 
 # 复制项目文件
 COPY pyproject.toml ./
-COPY . .
 
 # 安装 uv 包管理器
 RUN pip install --no-cache-dir uv -i https://mirrors.aliyun.com/pypi/simple
@@ -13,6 +12,8 @@ RUN pip install --no-cache-dir uv -i https://mirrors.aliyun.com/pypi/simple
 # 使用 uv 安装依赖
 RUN uv sync
 RUN uv cache clean
+
+COPY . .
 
 # 暴露端口
 EXPOSE 8000
