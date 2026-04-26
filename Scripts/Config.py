@@ -57,6 +57,11 @@ class Config(BaseModel):
     api_enabled: bool = False
     api_token: str = None
 
+    service_ssh_user: str = ''
+    service_ssh_host: str = ''
+    service_ssh_key: str = '/run/secrets/bot_service_key'
+    service_server_map: dict[str, str] = {}
+
 
 config: Config = get_plugin_config(Config)
 

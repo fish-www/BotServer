@@ -119,5 +119,13 @@
         }
       }
     }
+  },
+  "service": {
+    "usage": "service <action> <server>",
+    "description": "控制指定服务器的服务，仅管理员可用。",
+    "parameters": {
+      "server": "指定服务器名称或编号，需在配置中设置 service_server_map 映射。",
+      "action": "要执行的操作：start / stop / restart / status / reload。"
+    }
   }
 }

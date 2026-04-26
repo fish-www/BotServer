@@ -18,6 +18,12 @@ services:
             - ./Scripts:/app/Scripts
             - ./Logs:/app/Logs
             - ./Data:/app/Data
+        secrets:
+            - bot_service_key
+
+secrets:
+    bot_service_key:
+        file: ~/.ssh/bot_service  # 专用私钥，仅用于 SSH 到宿主机执行 service.sh
 
 networks:
     mcbot:
