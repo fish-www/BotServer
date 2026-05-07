@@ -4,6 +4,7 @@ from nonebot import get_driver, get_bot
 from nonebot.exception import NetworkError, ActionFailed
 from nonebot.drivers import WebSocketServerSetup, WebSocket, ASGIMixin, URL
 from nonebot.exception import WebSocketClosed
+from starlette.websockets import WebSocketDisconnect
 from nonebot.log import logger
 
 from .. import Globals
@@ -58,6 +59,9 @@ async def handle_websocket_minecraft(websocket: WebSocket):
 
 async def handle_websocket_bot(websocket: WebSocket):
     if name := await verify(websocket):
+        # Bot 重连时恢复服务器状态（监控连接可能已断开）
+        if existing := server_manager.servers.get(name):
+            existing.status = True
         # Bot 重连时关闭此服务器所有悬空会话，防止会话时长异常累积
         await playtime_manager.close_server_sessions(name)
         try:
@@ -93,8 +97,10 @@ async def handle_websocket_bot(websocket: WebSocket):
                     continue
                 logger.warning(F'收到来自 [{name}] 无法解析的数据 {receive_message}')
                 await websocket.send(Json.encode({'success': False}))
-        except (ConnectionError, WebSocketClosed):
+        except (ConnectionError, WebSocketClosed, WebSocketDisconnect):
             logger.info('WebSocket 连接已关闭！')
+            if server := server_manager.servers.get(name):
+                server.status = False
 
 
 async def send_message(sent_message: str):

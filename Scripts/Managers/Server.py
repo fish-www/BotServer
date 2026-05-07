@@ -4,6 +4,7 @@ from typing import Union
 from nonebot.drivers import WebSocket
 from nonebot.exception import WebSocketClosed
 from nonebot.log import logger
+from starlette.websockets import WebSocketDisconnect
 
 from .Data import data_manager
 from ..Config import config
@@ -30,7 +31,6 @@ class Server:
     async def send_data(self, event_type: str, data: object = None, wait: bool = True):
         if self.websocket.closed:
             logger.info(F'检测到与服务器 [{self.name}] 的连接已断开！')
-            self.status = False
             return None
         try:
             message_data = {'type': event_type}
@@ -46,8 +46,7 @@ class Server:
                 logger.debug(F'向服务器 [{self.name}] 发送数据 {event_type} 失败！')
                 return None
             logger.debug(F'向服务器 [{self.name}] 发送数据 {message_data}')
-        except (WebSocketClosed, ConnectionError):
-            self.status = False
+        except (WebSocketClosed, ConnectionError, WebSocketDisconnect):
             logger.warning(F'与服务器 [{self.name}] 的连接已断开！')
             return None
 
