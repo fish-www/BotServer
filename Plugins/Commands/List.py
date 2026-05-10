@@ -70,10 +70,18 @@ def format_players(players: list):
 
 
 def classify_players(players: list):
-    if not config.bot_prefix:
-        return (players,)
-    fake_players, real_players = [], []
+    filtered_players = []
     for player in players:
+        if player.endswith('\n'):
+            player = player[:-1]
+        if not player:
+            continue
+        filtered_players.append(player)
+
+    if not config.bot_prefix:
+        return (filtered_players,)
+    fake_players, real_players = [], []
+    for player in filtered_players:
         if player.upper().startswith(config.bot_prefix):
             fake_players.append(player)
             continue
